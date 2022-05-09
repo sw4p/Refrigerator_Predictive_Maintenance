@@ -67,24 +67,24 @@ void setup() {
 
   // Initialise humidity and temperature sensor
   if (!HTS.begin()) {
-    Serial.println("Failed to initialize humidity temperature sensor!");
+    print("Failed to initialize humidity temperature sensor!");
     while (1) blinkLED(LEDR, 1);
   }
 
   if (!PDM.begin(channels, frequency)) {
-    Serial.println("Failed to start PDM!");
+    print("Failed to start PDM!");
     while (1) blinkLED(LEDR, 1);
   }
 
   // Initialise gesture and proximity detection sensor
   if (!APDS.begin()) {
-    Serial.println("Error initializing APDS9960 sensor!");
+    print("Error initializing APDS9960 sensor!");
     while (1) blinkLED(LEDR, 1);
   }
 
   // Initialise BLE communication
   if (!BLE.begin()) {
-    Serial.println("Starting Bluetooth® Low Energy module failed!");
+    print("Starting Bluetooth® Low Energy module failed!");
     while (1) blinkLED(LEDR, 1);
   }
   
@@ -96,7 +96,7 @@ void setup() {
 
 void loop() {
   BLEDevice peripheral;
-  Serial.println("Discovering peripheral device...");
+  print("Discovering peripheral device...");
 
   do
   {
@@ -106,13 +106,7 @@ void loop() {
 
   if (peripheral) {
     // discovered a peripheral, print out address, local name, and advertised service
-    Serial.print("Found ");
-    Serial.print(peripheral.address());
-    Serial.print(" '");
-    Serial.print(peripheral.localName()); 
-    Serial.print("' ");
-    Serial.print(peripheral.advertisedServiceUuid());
-    Serial.println();
+    print("Found " + peripheral.address() + " '" + peripheral.localName() + "' " + peripheral.advertisedServiceUuid());
 
     // stop scanning
     BLE.stopScan();
@@ -126,21 +120,21 @@ void loop() {
 void connectPeripheral(BLEDevice peripheral)
 {
     // connect to the peripheral
-  Serial.println("Connecting ...");
+  print("Connecting ...");
 
   if (peripheral.connect()) {
-    Serial.println("Connected");
+    print("Connected");
   } else {
-    Serial.println("Failed to connect!");
+    print("Failed to connect!");
     return;
   }
 
   // discover peripheral attributes
-  Serial.println("Discovering attributes ...");
+  print("Discovering attributes ...");
   if (peripheral.discoverAttributes()) {
-    Serial.println("Attributes discovered");
+    print("Attributes discovered");
   } else {
-    Serial.println("Attribute discovery failed!");
+    print("Attribute discovery failed!");
     peripheral.disconnect();
     return;
   }
@@ -150,24 +144,20 @@ void connectPeripheral(BLEDevice peripheral)
   BLECharacteristic stringCharacteristic = peripheral.characteristic(stringCharacteristicUuid);
 
   if (/*!ledCharacteristic ||*/ !stringCharacteristic) {
-    Serial.println("Peripheral device does not have required characteristic!");
+    print("Peripheral device does not have required characteristic!");
     peripheral.disconnect();
     return;
   } else if (/*!ledCharacteristic.canWrite() || */!stringCharacteristic.canWrite()) {
-    Serial.println("Peripheral does not have a writable characteristic!");
+    print("Peripheral does not have a writable characteristic!");
     peripheral.disconnect();
     return;
   }
 
-  char val[5] = "Hiya";
   while (peripheral.connected()) {
     sendData(stringCharacteristic);
-    // if (stringCharacteristic.writeValue(val)) Serial.println("Sent");
-    // else Serial.println("Not Sent");
-    // delay(2000);
   }
 
-  Serial.println("Peripheral disconnected");
+  print("Peripheral disconnected");
 }
 
 void sendData(BLECharacteristic stringCharacteristic)
@@ -177,15 +167,10 @@ void sendData(BLECharacteristic stringCharacteristic)
   float temperature = HTS.readTemperature();
   float humidity    = HTS.readHumidity();
 
-  sensorReading += "T" + String(temperature, 2) + ",H" + String(humidity, 2) + ",";
+  sensorReading += "T" + String(temperature, 2) + ",H" + String(humidity, 2);
   // print each of the sensor values
-//  Serial.print("Temperature = ");
-//  Serial.print(temperature);
-//  Serial.println(" °C");
-//
-//  Serial.print("Humidity    = ");
-//  Serial.print(humidity);
-//  Serial.println(" %");
+  print("Temperature = " + String(temperature, 2) + " °C");
+  print("Humidity = " + String(humidity, 2) + " %");
   
   // Wait for samples to be read
   /*
@@ -217,21 +202,18 @@ void sendData(BLECharacteristic stringCharacteristic)
   {
     int r, g, b, a;
     APDS.readColor(r, g, b, a);
-    Serial.print("Ambient Light = ");
-    Serial.println(a);
-
-    // print("Ambient Light = " + String(a));
-
-    sensorReading += "A" + String(a);
+    print("Ambient Light = " + String(a));
+    sensorReading += ",A" + String(a);
   }
 
-  // print an empty line
-  Serial.print("Sending = ");
-  Serial.println(sensorReading);
-  stringCharacteristic.writeValue(sensorReading.c_str());
+  // print the string
+  print(sensorReading);
+
+  // Write string to a BLE characterstic
+  if (!stringCharacteristic.writeValue(sensorReading.c_str())) print("BLE Transmission Failed!");
 
   // wait 1 second to print again
-  delay(1000);
+  delay(100);
 }
 
 /**
