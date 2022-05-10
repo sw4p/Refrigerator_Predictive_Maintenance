@@ -82,6 +82,7 @@ void setup() {
 
 void loop() {
   // Listen for Bluetooth® Low Energy peripherals to connect:
+  blinkLED(LEDB, 1);
   BLEDevice central = BLE.central();
 
   // If a central is connected to peripheral:
