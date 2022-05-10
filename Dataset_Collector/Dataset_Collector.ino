@@ -1,5 +1,5 @@
 /*
-  Refrigerator Predictive Maintenance - Data Collector
+  Refrigerator Predictive Maintenance - Data Collector (BLE Central)
 
   This code reads various sensor values of the Arduino BLE Sense
   and send it to a BLE peripheral device in a CSV format.

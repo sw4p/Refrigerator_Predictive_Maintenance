@@ -1,53 +1,83 @@
-// This code is developed for the data recorder i.e. BLE peripheral (Portenta H7)
+/*
+  Refrigerator Predictive Maintenance - Data Recorder (BLE Peripheral)
+
+  This code receives string of sensor values via BLE and save it
+  to a file.
+
+  The circuit:
+  - Arduino Portenta H7
+
+  Creator:
+  - Swapnil Verma <usav.swapnil[at]gmail.com>
+*/
+
 #include <ArduinoBLE.h>
 
-BLEService ledService("19b10000-e8f2-537e-4f6c-d104768a1214");
+const char* deviceServiceUuid = "19b10000-e8f2-537e-4f6c-d104768a1214";
+const char* stringCharacteristicUuid = "1A3AC131-31EF-758B-BC51-54A61958EF82";
+
+const int value_length = 20;
+
+BLEService datasetRecorder(deviceServiceUuid);
 
 // Bluetooth® Low Energy LED Switch Characteristic - custom 128-bit UUID, read and writable by central
-BLEByteCharacteristic switchCharacteristic("19b10001-e8f2-537e-4f6c-d104768a1214", BLERead | BLEWrite);
-BLECharacteristic stringCharacteristic( "1A3AC131-31EF-758B-BC51-54A61958EF82", BLERead | BLEWrite, 20, "TEST1");
+BLECharacteristic stringCharacteristic(stringCharacteristicUuid, BLERead | BLEWrite, value_length);
 
 const int ledPin = LED_BUILTIN; // Pin to use for the LED
 
+// Set to false if not in Debug mode
+static const bool debug_mode = true;
+
+void print(const String information, bool new_line = true)
+{
+  if (!debug_mode) return;
+  
+  if (new_line) Serial.println(information);
+  else Serial.print(information);
+}
+
 void setup() {
-  Serial.begin(9600);
-  while (!Serial);   // Uncomment to wait for serial port to connect.
+
+  // Setup LEDs
+  pinMode(LEDR, OUTPUT);
+  pinMode(LEDG, OUTPUT);
+  pinMode(LEDB, OUTPUT);
+  
+  digitalWrite(LEDR, HIGH);   // will turn the LED off
+  digitalWrite(LEDG, HIGH);   // will turn the LED off
+  digitalWrite(LEDB, HIGH);   // will turn the LED off  
+
+  // Start Serial communication in debug mode
+  if (debug_mode)
+  {
+    Serial.begin(9600);
+    while (!Serial) blinkLED(LEDR, 1);
+  }
 
   // Set LED pin to output and make it HIGH so it's off.
   pinMode(ledPin, OUTPUT);
   digitalWrite(ledPin, HIGH);
 
-  // Begin initialization
+  // Initialise BLE communication
   if (!BLE.begin()) {
-    Serial.println("Starting Bluetooth® Low Energy failed!");
-    digitalWrite(LEDR, HIGH);
-    delay(1000);
-    digitalWrite(LEDR, LOW);
-
-    // Stop if Bluetooth® Low Energy couldn't be initialized.
-    while (1);
+    print("Starting Bluetooth® Low Energy failed!");
+    while (1) blinkLED(LEDR, 1);
   }
 
   // Set advertised local name and service UUID:
   BLE.setLocalName("Dataset_Recorder");
-  BLE.setAdvertisedService(ledService);
+  BLE.setAdvertisedService(datasetRecorder);
 
   // Add the characteristic to the service
-  ledService.addCharacteristic(switchCharacteristic);
-  ledService.addCharacteristic(stringCharacteristic);
+  datasetRecorder.addCharacteristic(stringCharacteristic);
 
   // Add service
-  BLE.addService(ledService);
-
-  // Set the initial value for the characeristic:
-  switchCharacteristic.writeValue(0);
+  BLE.addService(datasetRecorder);
 
   // start advertising
   BLE.advertise();
-  digitalWrite(LEDB, LOW);
-  delay(1000);
-  digitalWrite(LEDB, HIGH);
-  Serial.println("BLE LED Control ready");
+  blinkLED(LEDG, 3);
+  print("Dataset Recorder Ready");
 }
 
 void loop() {
@@ -56,46 +86,33 @@ void loop() {
 
   // If a central is connected to peripheral:
   if (central) {
-    Serial.print("Connected to central: ");
-    // Print the central's MAC address:
-    Serial.println(central.address());
-    digitalWrite(LEDB, HIGH);
-    delay(100);
-    digitalWrite(LEDB, LOW);
-    delay(100);
-    digitalWrite(LEDB, HIGH);
+    print("Connected to central: " + central.address());
+    blinkLED(LEDB, 2);
 
     // While the central is still connected to peripheral:
-    static char read_val[20];
+    char read_buff[value_length];
     while (central.connected()) {
-      // If the remote device wrote to the characteristic,
-      // Use the value to control the LED:
-      if (switchCharacteristic.written()) {
-        Serial.println(switchCharacteristic.value());
-        if (switchCharacteristic.value()) {   // Any value other than 0
-          Serial.println("LED on");
-          digitalWrite(ledPin, LOW);          // Will turn the Portenta LED on
-        } else {                             
-          Serial.println("LED off");
-          digitalWrite(ledPin, HIGH);         // Will turn the Portenta LED off          
-        }
-      }
-
       if (stringCharacteristic.written())
       {
-        stringCharacteristic.readValue(read_val, stringCharacteristic.valueLength());
-        String val = read_val;
-        Serial.println(val);
+        stringCharacteristic.readValue(read_buff, stringCharacteristic.valueLength());
+        print(String(read_buff));
       }
     }
 
     // When the central disconnects, print it out:
-    Serial.print("Disconnected from central: ");
-    Serial.println(central.address());    
-    digitalWrite(LEDB, HIGH);
-    delay(100);
-    digitalWrite(LEDB, LOW);
-    delay(100);
-    digitalWrite(LEDB, HIGH);
+    print("Disconnected from central: " + central.address()); 
+    blinkLED(LEDR, 2);
+  }
+}
+
+/* Function to blink led */
+void blinkLED(int led_colour, int blink_count)
+{
+  for (int i = 0; i < blink_count; ++i)
+  {
+    digitalWrite(led_colour, LOW);
+    delay(150);
+    digitalWrite(led_colour, HIGH);
+    delay(150);
   }
 }
