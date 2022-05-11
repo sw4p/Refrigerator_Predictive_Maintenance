@@ -162,6 +162,8 @@ void connectPeripheral(BLEDevice peripheral)
 
 void sendData(BLECharacteristic stringCharacteristic)
 {
+  bool found_light_sensor = false;
+
   // The format of the string is {Temperature, Humidity, Ambient Light}
   String sensorReading;
   // read all the sensor values
@@ -205,17 +207,21 @@ void sendData(BLECharacteristic stringCharacteristic)
     APDS.readColor(r, g, b, a);
     print("Ambient Light = " + String(a));
     sensorReading += "," + String(a);
+    found_light_sensor = true;
   }
 
-  // Adding an end of line character
-  sensorReading += "#";
   // print the string
   print(sensorReading);
 
   // Write string to a BLE characterstic
-  if (!stringCharacteristic.writeValue(sensorReading.c_str())) print("BLE Transmission Failed!");
+  if (found_light_sensor)
+  {
+    if (!stringCharacteristic.writeValue(sensorReading.c_str())) print("BLE Transmission Failed!");
+    // Reset found_xyz flags
+    found_light_sensor = false;
+  }
 
-  // wait 1 second to print again
+  // wait 100 ms to print again
   delay(100);
 }
 
