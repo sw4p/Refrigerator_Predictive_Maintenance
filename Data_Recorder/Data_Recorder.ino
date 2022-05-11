@@ -91,10 +91,10 @@ void loop() {
     blinkLED(LEDB, 2);
 
     // While the central is still connected to peripheral:
-    char read_buff[value_length];
     while (central.connected()) {
       if (stringCharacteristic.written())
       {
+        char read_buff[value_length] = {'\0'};
         stringCharacteristic.readValue(read_buff, stringCharacteristic.valueLength());
         print(String(read_buff));
       }
