@@ -59,7 +59,7 @@ void setup() {
   if (debug_mode)
   {
     Serial.begin(9600);
-//    while (!Serial) blinkLED(LEDR, 1);
+    while (!Serial) blinkLED(LEDR, 1);
   }
 
   // Configure the data receive callback
@@ -207,6 +207,8 @@ void sendData(BLECharacteristic stringCharacteristic)
     sensorReading += "," + String(a);
   }
 
+  // Adding an end of line character
+  sensorReading += "#";
   // print the string
   print(sensorReading);
 
