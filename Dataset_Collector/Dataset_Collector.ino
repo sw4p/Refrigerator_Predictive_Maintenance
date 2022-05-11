@@ -34,7 +34,7 @@ const char* deviceServiceCharacteristicUuid = "19b10001-e8f2-537e-4f6c-d104768a1
 const char* stringCharacteristicUuid = "1A3AC131-31EF-758B-BC51-54A61958EF82";
 
 // Set to false if not in Debug mode
-static const bool debug_mode = true;
+const bool debug_mode = false;
 
 void print(const String information, bool new_line = true)
 {
@@ -59,7 +59,7 @@ void setup() {
   if (debug_mode)
   {
     Serial.begin(9600);
-    while (!Serial) blinkLED(LEDR, 1);
+//    while (!Serial) blinkLED(LEDR, 1);
   }
 
   // Configure the data receive callback
@@ -162,12 +162,13 @@ void connectPeripheral(BLEDevice peripheral)
 
 void sendData(BLECharacteristic stringCharacteristic)
 {
+  // The format of the string is {Temperature, Humidity, Ambient Light}
   String sensorReading;
   // read all the sensor values
   float temperature = HTS.readTemperature();
   float humidity    = HTS.readHumidity();
-
-  sensorReading += "T" + String(temperature, 2) + ",H" + String(humidity, 2);
+ 
+  sensorReading = String(temperature, 2) + "," + String(humidity, 2);
   // print each of the sensor values
   print("Temperature = " + String(temperature, 2) + " °C");
   print("Humidity = " + String(humidity, 2) + " %");
@@ -203,7 +204,7 @@ void sendData(BLECharacteristic stringCharacteristic)
     int r, g, b, a;
     APDS.readColor(r, g, b, a);
     print("Ambient Light = " + String(a));
-    sensorReading += ",A" + String(a);
+    sensorReading += "," + String(a);
   }
 
   // print the string
