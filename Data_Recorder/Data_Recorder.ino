@@ -12,7 +12,15 @@
 */
 
 #include <ArduinoBLE.h>
+#include "SDMMCBlockDevice.h"
+#include "FATFileSystem.h"
 
+// SD card
+SDMMCBlockDevice block_device;
+mbed::FATFileSystem fs("fs");
+FILE *myFile;
+
+// BLE
 const char* deviceServiceUuid = "19b10000-e8f2-537e-4f6c-d104768a1214";
 const char* stringCharacteristicUuid = "1A3AC131-31EF-758B-BC51-54A61958EF82";
 
@@ -52,6 +60,37 @@ void setup() {
   {
     Serial.begin(9600);
     while (!Serial) blinkLED(LEDR, 1);
+  }
+
+  // Setup SD Card
+  print("Mounting SDCARD...");
+  int err =  fs.mount(&block_device);
+  if (err) {
+    // Reformat if we can't mount the filesystem
+    // this should only happen on the first boot
+    print("No filesystem found, formatting... ");
+
+    print("Do you want to format the SD card? (Y/N): ");
+    if (readInput() == 'Y') err = fs.reformat(&block_device);
+  }
+  if (err) {
+     print("Error formatting SDCARD ");
+     while(1) blinkLED(LEDR, 1);
+  }
+
+  // Open/Create a file on the SD Card
+  print("Opening a file");
+  myFile = fopen("fs/dataset.csv", "a");
+  if (myFile)
+  {
+    print("File open successfully");
+    fprintf(myFile, "******** Refrigerator Predictive Maintenance ********\r\n");
+    fprintf(myFile, "Temperature,Humidity,Illumination\r\n");
+  }
+  else
+  {
+    print("Could not open a file");
+    while(1) blinkLED(LEDR, 1);
   }
 
   // Set LED pin to output and make it HIGH so it's off.
@@ -96,14 +135,17 @@ void loop() {
       {
         char read_buff[value_length] = {'\0'};
         stringCharacteristic.readValue(read_buff, stringCharacteristic.valueLength());
+        fprintf(myFile, read_buff);
+        fprintf(myFile, "\r\n");
         print(String(read_buff));
+        shouldIQuit();        
       }
     }
 
     // When the central disconnects, print it out:
     print("Disconnected from central: " + central.address()); 
-    blinkLED(LEDR, 2);
   }
+  shouldIQuit();
 }
 
 /* Function to blink led */
@@ -115,5 +157,35 @@ void blinkLED(int led_colour, int blink_count)
     delay(150);
     digitalWrite(led_colour, HIGH);
     delay(150);
+  }
+}
+
+char readInput()
+{
+  char incoming;
+  while(1)
+  {
+    if (Serial.available() > 0)
+    {
+      incoming = Serial.read();
+      break;
+    }
+    blinkLED(LEDR, 1);
+  }
+  return incoming;
+}
+
+void shouldIQuit()
+{
+  if (Serial.available() > 0)
+  {
+    if (Serial.read() == 'Q')
+    {
+      print("Closing File");
+      delay(1000);
+      fclose(myFile);
+      
+      while(1) blinkLED(LEDG, 1);
+    }
   }
 }
